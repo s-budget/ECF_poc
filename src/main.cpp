@@ -29,7 +29,7 @@ int main() {
         auto engine = createEngine(cfg);
         engine->initialize();
         map<std::string, IntersectionData> intersections = loadFromConfig(cfg.config_file);
-        evolution::Evaluator evaluator(engine, 700, 10, true);
+        evolution::Evaluator evaluator(engine, 700, 10, false);
 
         vector<shared_ptr<Agent>> agents;
         for (const auto& id : engine->getIntersectionIDs()) {

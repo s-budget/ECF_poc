@@ -4,5 +4,3 @@ vcpkg/
 cmake-build-debug/
 /.idea/
 .idea/
-/src/total_output.txt
-src/total_output.txt
