@@ -1,0 +1,25 @@
+<ECF>
+    <Algorithm>
+        <SteadyStateTournament>
+            <Entry key="tsize">3</Entry>
+        </SteadyStateTournament>
+    </Algorithm>
+
+    <Genotype>
+        <Tree>
+            <Entry key="maxdepth">5</Entry>
+            <Entry key="mindepth">2</Entry>
+            <Entry key="functionset">+ - * / sin cos</Entry>
+            <Entry key="terminalset">x y z</Entry>
+        </Tree>
+    </Genotype>
+
+    <Registry>
+        <Entry key="population.size">500</Entry>
+        <Entry key="term.maxgen">200</Entry>
+        <Entry key="term.fitnessval">0.01</Entry>
+        <Entry key="mutation.indprob">0.3</Entry>
+        <Entry key="log.level">3</Entry>
+        <Entry key="randomizer.seed">0</Entry>
+    </Registry>
+</ECF>

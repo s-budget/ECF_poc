@@ -1,0 +1,6 @@
+/vcpkg/
+/cmake-build-debug/
+vcpkg/
+cmake-build-debug/
+/.idea/
+.idea/

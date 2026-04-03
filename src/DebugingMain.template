@@ -1,0 +1,71 @@
+#include "simulator/SimulatorEngine.hpp"
+#include "simulator/CityFlowEngine.hpp"
+#include "simulator/SimulationRunner.hpp"
+#include "agent/Agent.hpp"
+#include "procesing/roadnet_loader.h"
+
+#include <iostream>
+#include <memory>
+#include <vector>
+
+#include "agent/Evaluator.hpp"
+#include "agent/WorstLanesAgent.hpp"
+
+using namespace std;
+
+int main() {
+    // redirect stdout and stderr to file
+    freopen("total_output.txt", "w", stdout);
+    freopen("total_output.txt", "a", stderr);
+    try {
+        cout << "[main] Starting...\n"; cout.flush();
+
+        // config
+        traffic::EngineConfig cfg;
+        cfg.type        = traffic::SimulatorType::CityFlow;
+        cfg.config_file = "data/cityflow_config.json";
+        cfg.num_threads = 1;
+        cfg.random_seed = 42;
+        cfg.verbose     = false;
+        cout << "[main] Config created\n"; cout.flush();
+
+       auto engine = createEngine(cfg);
+        cout << "[main] Engine created\n"; cout.flush();
+        engine->initialize();
+        cout << "[main] Engine initialized. Found " << engine->getIntersectionIDs().size() << " intersections\n"; cout.flush();
+        std::map<std::string, IntersectionData> intersections;
+        try {
+            intersections = loadFromConfig(cfg.config_file);
+        } catch (std::exception const& e) {
+            std::cerr << "Error: " << e.what() << "\n";
+            return 1;
+        }
+        cout << "[main] recognised all lanes and directions\n"; cout.flush();
+        vector<shared_ptr<traffic::Agent>> agents;
+
+
+        for (const auto& id : engine->getIntersectionIDs()) {
+            int phases = engine->getPhaseCount(id);
+            agents.push_back(make_shared<traffic::WorstLanesAgent>(id, phases, intersections[id]));
+            cout << "[main] Agent created for intersection '" << id << "' with " << phases << " phases\n"; cout.flush();
+        }
+        cout << "[main] All agents created: " << agents.size() << " total\n"; cout.flush();
+
+        // run
+        evolution::Evaluator evaluator(engine, 700, 10, true);
+        cout << "[main] Evaluator created and setup done\n"; cout.flush();
+
+        double score = evaluator.evaluate(agents);
+        cout << "[main] Evaluation finished, score=" << score << "\n"; cout.flush();
+
+    } catch (const exception& e) {
+        cerr << "[FATAL] " << e.what() << "\n";
+        return 1;
+    } catch (...) {
+        cerr << "[FATAL] unknown exception\n";
+        return 1;
+    }
+
+    cout << "[main] Done\n";
+    return 0;
+}

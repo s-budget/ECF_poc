@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ECF>
+
+    <Genotype>
+        <FloatingPoint>
+            <Entry key="dimension">8</Entry>
+            <Entry key="lbound">5</Entry>
+            <Entry key="ubound">90</Entry>
+        </FloatingPoint>
+    </Genotype>
+
+    <Algorithm>
+        <DifferentialEvolution>
+            <Entry key="F">0.5</Entry>
+            <Entry key="CR">0.9</Entry>
+            <Entry key="bounded">1</Entry>
+        </DifferentialEvolution>
+    </Algorithm>
+
+    <Registry>
+        <Entry key="population.size">20</Entry>
+        <Entry key="term.maxgen">50</Entry>
+        <Entry key="log.level">3</Entry>
+        <Entry key="randomizer.seed">42</Entry>
+    </Registry>
+
+</ECF>
