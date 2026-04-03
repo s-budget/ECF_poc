@@ -11,9 +11,9 @@ find_package(CityFlowCpp REQUIRED)
 include_directories("C:/Users/mpristav/local/ecf-install/include")
 
 add_executable(ECF_poc
-        main.cpp
-        include/simulator/SimulatorEngine.cpp
-        include/agent/Evaluator.hpp
+        src/main.cpp
+        src/include/simulator/SimulatorEngine.cpp
+        src/include/agent/Evaluator.hpp
 )
 
 target_include_directories(ECF_poc PRIVATE include)
