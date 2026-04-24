@@ -16,7 +16,7 @@ namespace traffic {
             for (int i=0; i<phase_count_; i++) {
                 int totalCarsForPhase=0;
                 for (string const& laneId : intersectionRoadData.phaseLanes[i]) {
-                    totalCarsForPhase+=state.total_cars_per_lane.at(laneId);
+                    totalCarsForPhase+=state.queue_lengths_per_lane.at(laneId);
                 }
                 if (totalCarsForPhase > maxCars) {
                     maxCars=totalCarsForPhase;

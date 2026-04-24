@@ -23,6 +23,8 @@ public:
         , verbose_(verbose)
     {}
 
+    SimulationRunner(){};
+
     void setup() {
         if (setup_done_) return;
         setup_done_ = true;
@@ -62,7 +64,7 @@ public:
         }
 
         // final state with full statistics
-        SimulationState final_state = engine_->getState(true, true);
+        SimulationState final_state = engine_->getState(true, false);
         printSimulationState(final_state);
         done_ = true;
         return final_state;

@@ -1,0 +1,41 @@
+<ECF>
+    <Genotype>
+        <Tree>
+
+            <Entry key="terminalset">W0 W1 W2 W3 C0 C1 C2 C3 [-1 1]</Entry>
+
+            <Entry key="functionset">+ - / *</Entry>
+
+            <Entry key="maxdepth">6</Entry>
+            <Entry key="initmindepth">3</Entry>
+        </Tree>
+    </Genotype>
+    <Algorithm>
+        <SteadyStateTournament>
+            <tsize> 3 </tsize>
+        </SteadyStateTournament>
+    </Algorithm>
+
+    <Registry>
+
+        <Entry key="population.size">100</Entry>
+        <Entry key="term.maxgen">51</Entry>
+        <Entry key="mutation.indprob">0.1</Entry>
+        <Entry key="population.demes">1</Entry>
+
+        <Entry key="term.stagnation">30</Entry>
+        <Entry key="term.fitnessval">0</Entry>
+        <Entry key="batch.repeats">0</Entry>
+        <Entry key="log.filename">log.txt</Entry>
+        <Entry key="log.level">4</Entry>
+
+
+
+        <!-- Crossover / mutation rates (paper: 90% / 10%) -->
+        <!--crossover.prob>     0.9 </crossover.prob-->
+
+
+
+    </Registry>
+
+</ECF>

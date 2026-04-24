@@ -19,9 +19,12 @@ namespace evolution {
             runner_.setup();
         }
 
+        Evaluator(): runner_() {
+        };
+
         double evaluate(const vector<shared_ptr<traffic::Agent>>& agents) {
             traffic::SimulationState state = runner_.run(agents);
-            return state.mean_waiting_time;//todo make fitness function from state
+            return state.max_queue_size_until_now;//todo make fitness function from state
         }
 
     private:

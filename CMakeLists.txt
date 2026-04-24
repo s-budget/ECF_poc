@@ -14,6 +14,7 @@ add_executable(ECF_poc
         src/main.cpp
         src/include/simulator/SimulatorEngine.cpp
         src/include/agent/Evaluator.hpp
+        src/include/agent/Gplightagent.hpp
 )
 
 target_include_directories(ECF_poc PRIVATE include)

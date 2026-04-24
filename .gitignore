@@ -6,3 +6,9 @@ cmake-build-debug/
 .idea/
 /src/total_output.txt
 src/total_output.txt
+/src/data/replay.txt
+src/data/replay.txt
+src/data/replay_roadnet.json
+/src/data/replay_roadnet.json
+/output_files/
+/total_output.txt
