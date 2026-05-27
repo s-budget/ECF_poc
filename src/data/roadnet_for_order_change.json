@@ -10085,6 +10085,50 @@
               9,
               10
             ]
+          },
+          {
+            "time": 30,
+            "availableRoadLinks": [
+              0,
+              1,
+              2,
+              3,
+              6,
+              10
+            ]
+          },
+          {
+            "time": 30,
+            "availableRoadLinks": [
+              2,
+              3,
+              6,
+              7,
+              8,
+              10
+            ]
+          },
+          {
+            "time": 30,
+            "availableRoadLinks": [
+              2,
+              3,
+              4,
+              5,
+              6,
+              10
+            ]
+          },
+          {
+            "time": 30,
+            "availableRoadLinks": [
+              2,
+              3,
+              6,
+              9,
+              10,
+              11
+            ]
           }
         ]
       },
