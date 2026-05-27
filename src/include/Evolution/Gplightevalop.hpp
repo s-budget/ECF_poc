@@ -4,55 +4,49 @@
 
 #include "../agent/Evaluator.hpp"
 #include "../agent/GPLightAgent.hpp"
+#include "../agent/ImprovedGPLightAgent.hpp"
 
 #include <vector>
 #include <memory>
 
 namespace evolution {
 
+    template<typename TAgent>
+    class GPLightEvalOp : public EvaluateOp {
+    public:
+        GPLightEvalOp() : evaluator_() {}
 
-class GPLightEvalOp : public EvaluateOp {
-public:
-    GPLightEvalOp();
+        bool initialize(StateP state) override { return true; }
 
-    bool initialize(StateP state) override
-    {
-        return true;
-    }
-
-    void setup(Evaluator evaluator,
-           std::vector<std::shared_ptr<traffic::GPLightAgent>> agents)
-    {
-        evaluator_ = evaluator;
-        agents_ = agents;
-        for (auto& a : agents_)
-            base_agents_.push_back(a);
-    }
-
-    FitnessP evaluate(IndividualP individual) override
-    {
-
-        Tree::Tree* tree =
-            static_cast<Tree::Tree*>(individual->getGenotype().get());
-
-        // Share the same tree across all intersection agents
-        for (auto& agent : agents_) {
-            agent->setTree(tree);
+        void setup(Evaluator evaluator,
+                   std::vector<std::shared_ptr<TAgent>> agents)
+        {
+            evaluator_ = evaluator;
+            agents_ = agents;
+            for (auto& a : agents_)
+                base_agents_.push_back(a);
         }
-        double att = evaluator_.evaluate(base_agents_);
 
-        FitnessP fitness(new FitnessMin);
-        fitness->setValue(att);
-        return fitness;
-    }
+        FitnessP evaluate(IndividualP individual) override
+        {
+            Tree::Tree* tree =
+                static_cast<Tree::Tree*>(individual->getGenotype().get());
 
-private:
-    Evaluator evaluator_;
-    std::vector<std::shared_ptr<traffic::GPLightAgent>> agents_;
-    std::vector<std::shared_ptr<traffic::Agent>> base_agents_;
+            for (auto& agent : agents_)
+                agent->setTree(tree);
 
-};
+            FitnessP fitness(new FitnessMin);
+            fitness->setValue(evaluator_.evaluate(base_agents_));
+            return fitness;
+        }
 
-inline GPLightEvalOp::GPLightEvalOp(): evaluator_() {
-}
-}
+    private:
+        Evaluator evaluator_;
+        std::vector<std::shared_ptr<TAgent>> agents_;
+        std::vector<std::shared_ptr<traffic::Agent>> base_agents_;
+    };
+
+    using GPLightEvalOpBasic    = GPLightEvalOp<traffic::GPLightAgent>;
+    using GPLightEvalOpImproved = GPLightEvalOp<traffic::ImprovedGPLightAgent>;
+
+} // namespace evolution

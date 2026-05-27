@@ -4,6 +4,8 @@
 #include "include/simulator/CityFlowEngine.hpp"
 #include "include/procesing/roadnet_loader.h"
 #include "include/agent/GPLightAgent.hpp"
+#include "include/agent/ImprovedGPLightAgent.hpp"
+
 #include "include/evolution/GPLightEvalOp.hpp"
 
 #include <iostream>
@@ -30,17 +32,17 @@ int main(int argc, char** argv)
     engine->initialize();
 
     map<string, IntersectionData> intersections = loadFromConfig(cfg.config_file);
-    evolution::Evaluator evaluator(engine, 700, 10, false);
+    evolution::Evaluator evaluator(engine, 700, 5,5, false);
 
-    vector<shared_ptr<GPLightAgent>> agents;
+    vector<shared_ptr<ImprovedGPLightAgent>> agents;
     for (const auto& id : engine->getIntersectionIDs()) {
         int phases = engine->getPhaseCount(id);
         agents.push_back(
-            make_shared<GPLightAgent>(id, phases, intersections[id])
+            make_shared<ImprovedGPLightAgent>(id, phases, intersections[id])
         );
     }
 
-    auto evalOp = make_shared<evolution::GPLightEvalOp>();
+    auto evalOp = std::make_shared<evolution::GPLightEvalOpImproved>();
     evalOp->setup(evaluator, agents);
 
     TreeP tree = make_shared<Tree::Tree>();

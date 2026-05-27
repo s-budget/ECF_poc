@@ -33,4 +33,6 @@ namespace traffic {
     private:
     };
 
+    //todo add new way of sending actions
+
 }
