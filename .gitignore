@@ -12,3 +12,6 @@ src/data/replay_roadnet.json
 /src/data/replay_roadnet.json
 /output_files/
 /total_output.txt
+/experiments/
+/log.txt
+/src/best_tree.xml

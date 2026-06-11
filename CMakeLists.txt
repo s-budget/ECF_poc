@@ -16,6 +16,12 @@ add_executable(ECF_poc
         src/include/agent/Evaluator.hpp
         src/include/agent/Gplightagent.hpp
         src/include/agent/ImprovedGPLightAgent.hpp
+        src/util.cpp
+        src/util.h
+        src/evolutionMain.cpp
+        src/evolutionMain.h
+        src/evaluationMain.cpp
+        src/evaluationMain.h
 )
 
 target_include_directories(ECF_poc PRIVATE include)

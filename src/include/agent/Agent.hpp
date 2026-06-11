@@ -25,6 +25,11 @@ namespace traffic {
             return last_action_;
         }
 
+        virtual std::vector<double> getPhaseUrgencies(const IntersectionState& state)
+        {
+            return std::vector<double>(phase_count_, 0.0);
+        }
+
         // Free mode — return a series of actions with durations (at least one element).
         // Default: wraps selectAction in a single TimedAction with duration 1.
         virtual vector<TimedAction> selectActions(const IntersectionState& state) {

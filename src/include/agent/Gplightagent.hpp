@@ -37,6 +37,12 @@ public:
         return last_action_;
     }
 
+    std::vector<double> getPhaseUrgencies(const IntersectionState& state)
+    {
+        auto [best_phase, urgencies] = rankPhases(state);
+        return urgencies;
+    }
+
     // Free mode:
     //   - phase changed -> [red(red_duration_), new_action(action_duration_)]
     //   - phase same    -> [action(action_duration_)]
