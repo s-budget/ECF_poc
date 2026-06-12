@@ -24,7 +24,7 @@ int evaluation_main(int argc, char** argv)
 
     EngineConfig cfg;
     cfg.type        = SimulatorType::CityFlow;
-    cfg.config_file = "src/data/cityflow_config.json";
+    cfg.config_file = "src/data/cityflow_config_hangzhou_4x4.json";
     cfg.num_threads = 1;
     cfg.random_seed = 42;
     cfg.verbose     = false;

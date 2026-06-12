@@ -1,0 +1,12 @@
+{
+  "interval": 1,
+  "seed": 0,
+  "dir": "src/data/",
+  "roadnetFile": "roadnet_hangzhou_4x4.json",
+  "flowFile": "flow_hangzhou_4x4.json",
+  "rlTrafficLight": true,
+  "laneChange": false,
+  "saveReplay": false,
+  "roadnetLogFile": "replay_roadnet.json",
+  "replayLogFile": "replay.txt"
+}

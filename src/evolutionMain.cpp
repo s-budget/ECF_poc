@@ -26,7 +26,7 @@ int evolution_main(int argc, char** argv)
     freopen("total_output.txt", "a", stderr);
     EngineConfig cfg;
     cfg.type        = SimulatorType::CityFlow;
-    cfg.config_file = "src/data/cityflow_config.json";
+    cfg.config_file = "src/data/cityflow_config_hangzhou_4x4.json";
     cfg.num_threads = 1;
     cfg.random_seed = 42;
     cfg.verbose     = false;
@@ -35,7 +35,7 @@ int evolution_main(int argc, char** argv)
     engine->initialize();
 
     map<string, IntersectionData> intersections = loadFromConfig(cfg.config_file);
-    evolution::Evaluator evaluator(engine, 700, 5,5, false);
+    evolution::Evaluator evaluator(engine, 3600, 5,5, false);
 
     vector<shared_ptr<GPLightAgent>> agents;
     for (const auto& id : engine->getIntersectionIDs()) {
