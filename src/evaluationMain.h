@@ -3,4 +3,4 @@
 //
 
 #pragma once
-int evaluation_main(int argc, char** argv);
+int evaluation_main(int argc, char** argv, bool verbose, bool vote_for_all_phases);

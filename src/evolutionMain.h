@@ -4,4 +4,4 @@
 
 #pragma once
 
-int evolution_main(int argc, char** argv);
+int evolution_main(int argc, char** argv, bool verbose);

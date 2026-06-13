@@ -22,6 +22,12 @@ add_executable(ECF_poc
         src/evolutionMain.h
         src/evaluationMain.cpp
         src/evaluationMain.h
+        src/ensemblePreparationMain.cpp
+        src/ensemblePreparationMain.h
+        src/regenerateFitnessMain.cpp
+        src/regenerateFitnessMain.h
+        src/ensembleConcurrentMain.cpp
+        src/ensembleConcurrentMain.h
 )
 
 target_include_directories(ECF_poc PRIVATE include)

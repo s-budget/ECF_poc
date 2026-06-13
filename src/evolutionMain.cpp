@@ -20,10 +20,19 @@
 using namespace std;
 using namespace traffic;
 
-int evolution_main(int argc, char** argv)
+int evolution_main(int argc, char** argv, bool verbose)
 {
-    freopen("total_output.txt", "w", stdout);
-    freopen("total_output.txt", "a", stderr);
+    if (!verbose) {
+        cout.rdbuf(nullptr);
+        cerr.rdbuf(nullptr);
+    }
+    else {
+        freopen("total_output.txt", "w", stdout);
+        freopen("total_output.txt", "a", stderr);
+    }
+
+    std::string experiment_dir = util::reserve_experiment_dir();
+
     EngineConfig cfg;
     cfg.type        = SimulatorType::CityFlow;
     cfg.config_file = "src/data/cityflow_config_hangzhou_4x4.json";
@@ -75,8 +84,11 @@ int evolution_main(int argc, char** argv)
 
     XMLNode xml;
     bestTree->write(xml);
-    xml.writeToFile("src/best_tree.xml");
-    util::save_all_relevant_results();
+    xml.writeToFile((experiment_dir+"/best_tree.xml").c_str());
+    std::ofstream fitnessFile(experiment_dir+"/fitness.txt");
+    fitnessFile << best->fitness->getValue() << "\n";
+
+    util::save_all_relevant_results(experiment_dir);
 
     return 0;
 }

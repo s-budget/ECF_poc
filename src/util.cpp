@@ -23,46 +23,39 @@ namespace fs = std::filesystem;
 namespace util
 {
 
-bool save_all_relevant_results()
+std::string reserve_experiment_dir()
 {
-    static const std::vector<std::string> files_to_copy =
-    {
-        "log.txt",
-        "total_output.txt",
-        "src/best_tree.xml",
-        "src/data/replay.txt",
-        "src/data/replay_roadnet.json"
-    };
-
-    fs::path experiment_dir;
-
-    bool found = false;
-
     for (int i = 1; i <= 999; ++i)
     {
         std::ostringstream ss;
         ss << "experiments/experiment_"
-           << std::setw(3)
-           << std::setfill('0')
-           << i;
+           << std::setw(3) << std::setfill('0') << i;
 
         fs::path candidate(ss.str());
 
         if (!fs::exists(candidate))
         {
-            experiment_dir = candidate;
-            found = true;
-            break;
+            fs::create_directory(candidate);
+            std::cout << "Experiment directory reserved: "
+                      << candidate.string() << '\n';
+            return candidate.string();
         }
     }
 
-    if (!found)
-    {
-        std::cerr << "No available experiment directory names.\n";
-        return false;
-    }
+    throw std::runtime_error("No available experiment directory names.");
+}
 
-    fs::create_directory(experiment_dir);
+bool save_all_relevant_results(const std::string& experiment_dir)
+{
+    static const std::vector<std::string> files_to_copy =
+    {
+        "log.txt",
+        "total_output.txt",
+        "src/data/replay.txt",
+        "src/data/replay_roadnet.json"
+    };
+
+    fs::path dir(experiment_dir);
 
     for (const auto& file : files_to_copy)
     {
@@ -70,36 +63,26 @@ bool save_all_relevant_results()
 
         if (!fs::exists(source))
         {
-            std::cerr << "Warning: file not found: "
-                      << source << '\n';
+            std::cerr << "Warning: file not found: " << source << '\n';
             continue;
         }
-
-        fs::path destination =
-            experiment_dir / source.filename();
 
         try
         {
             fs::copy_file(
                 source,
-                destination,
+                dir / source.filename(),
                 fs::copy_options::overwrite_existing
             );
         }
         catch (const std::exception& e)
         {
-            std::cerr << "Failed to copy "
-                      << source
-                      << ": "
-                      << e.what()
-                      << '\n';
+            std::cerr << "Failed to copy " << source
+                      << ": " << e.what() << '\n';
         }
     }
 
-    std::cout << "Results saved to: "
-              << experiment_dir.string()
-              << '\n';
-
+    std::cout << "Results saved to: " << experiment_dir << '\n';
     return true;
 }
 

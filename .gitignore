@@ -15,3 +15,6 @@ src/data/replay_roadnet.json
 /experiments/
 /log.txt
 /src/best_tree.xml
+/ensemble_fitness_weighted.txt
+/ensemble_random.txt
+/ensemble_single.txt

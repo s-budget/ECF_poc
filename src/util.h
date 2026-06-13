@@ -10,7 +10,9 @@ namespace traffic {
 
 namespace util
 {
-    bool save_all_relevant_results();
+    std::string reserve_experiment_dir();
+
+    bool save_all_relevant_results(const std::string& experiment_dir);
 
     TreeP load_tree_from_experiment(
         int experimentNumber,
