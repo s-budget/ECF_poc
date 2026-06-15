@@ -258,6 +258,8 @@ int evaluation_main(int argc, char** argv, bool verbose, bool vote_for_all_phase
         string filename = "experiments/ENSEMBLE_FITNESS_FOR_" + ensembleExperimentName + ".txt";
         ofstream f(filename);
         f << sState.mean_travel_time << '\n';
+        f << sState.max_queue_size_until_now << '\n';
+        f << sState.throughput << '\n';
         for (int id : experiment_ids)
             f << id << ' ';
         f << '\n';
