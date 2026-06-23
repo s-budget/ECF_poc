@@ -3,7 +3,7 @@
 #include "include/simulator/SimulatorEngine.hpp"
 #include "include/simulator/CityFlowEngine.hpp"
 #include "include/procesing/roadnet_loader.h"
-#include "include/agent/GPLightAgent.hpp"
+#include "include/agent/GplightagentWihtCurrentPhase.hpp"
 #include "include/agent/ImprovedGPLightAgent.hpp"
 
 #include "include/evolution/GPLightEvalOp.hpp"
@@ -46,15 +46,15 @@ int evolution_main(int argc, char** argv, bool verbose)
     map<string, IntersectionData> intersections = loadFromConfig(cfg.config_file);
     evolution::Evaluator evaluator(engine, 3600, 5,5, false);
 
-    vector<shared_ptr<GPLightAgent>> agents;
+    vector<shared_ptr<GPLightAgentWithCurrentPhase>> agents;
     for (const auto& id : engine->getIntersectionIDs()) {
         int phases = engine->getPhaseCount(id);
         agents.push_back(
-            make_shared<GPLightAgent>(id, phases, intersections[id])
+            make_shared<GPLightAgentWithCurrentPhase>(id, phases, intersections[id])
         );
     }
 
-    auto evalOp = std::make_shared<evolution::GPLightEvalOpBasic>();
+    auto evalOp = std::make_shared<evolution::GPLightEvalOpCurrent>();
     evalOp->setup(evaluator, agents);
 
     TreeP tree = make_shared<Tree::Tree>();
@@ -62,7 +62,7 @@ int evolution_main(int argc, char** argv, bool verbose)
     state->addGenotype(tree);
     state->setEvalOp(evalOp);
 
-    const char* ecfArgv[] = { argv[0], "src/data/ecf_gplightplus.xml" };
+    const char* ecfArgv[] = { argv[0], "src/data/ecf_gplightplusWithCurrentPhase.xml" };
     int         ecfArgc   = 2;
 
     if (!state->initialize(ecfArgc, const_cast<char**>(ecfArgv))) {
@@ -87,8 +87,9 @@ int evolution_main(int argc, char** argv, bool verbose)
     xml.writeToFile((experiment_dir+"/best_tree.xml").c_str());
     std::ofstream fitnessFile(experiment_dir+"/fitness.txt");
     fitnessFile << best->fitness->getValue() << "\n";
-
-    util::save_all_relevant_results(experiment_dir);
+    if (!verbose) {
+        util::save_all_relevant_results(experiment_dir);
+    }
 
     return 0;
 }

@@ -28,6 +28,8 @@ add_executable(ECF_poc
         src/regenerateFitnessMain.h
         src/ensembleConcurrentMain.cpp
         src/ensembleConcurrentMain.h
+        src/cyclicAgentEvaluationMain.cpp
+        src/cyclicAgentEvaluationMain.h
 )
 
 target_include_directories(ECF_poc PRIVATE include)

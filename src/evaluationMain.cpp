@@ -51,7 +51,7 @@ int growStep(
                 intersection_id, phases, intersections.at(intersection_id), std::move(sub_agents),vote_for_all_phases));
         }
 
-        traffic::SimulationRunner trial_runner(engine, 3600, 5, false, 5);
+        traffic::SimulationRunner trial_runner(engine, 100, 5, false, 5);
         trial_runner.setup();
         traffic::SimulationState trial_state = trial_runner.run(trial_ensemble);
 
@@ -207,8 +207,10 @@ int evaluation_main(int argc, char** argv, bool verbose, bool vote_for_all_phase
     // ---- GROW: iteratively find the best set of 5 experiment IDs ----
     if (mode == "GROW")
     {
-        while ((int)experiment_ids.size() < 5)
+        while ((int)experiment_ids.size() < 5) {
+            cout<<ensembleExperimentName<<" size: "<<(int)experiment_ids.size()<<endl;
             experiment_ids.push_back(growStep(experiment_ids, experiment_index, engine, intersections, all_agents,vote_for_all_phases));
+        }
     }
     // ---- GROW: iteratively find the best set of 10 experiment IDs and then remove 5 usless ones ----
     if (mode == "GROWDESTROY")
@@ -244,7 +246,7 @@ int evaluation_main(int argc, char** argv, bool verbose, bool vote_for_all_phase
                 std::move(sub_agents),vote_for_all_phases));
     }
 
-    traffic::SimulationRunner runner(engine, 3600, 5, false, 5);
+    traffic::SimulationRunner runner(engine, 600, 5, false, 5);
     runner.setup();
 
     traffic::SimulationState sState = runner.run(ensemble_agents);

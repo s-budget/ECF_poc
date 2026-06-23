@@ -87,28 +87,49 @@ int ensemble_concurrent_main(int argc, char** argv)
         // ... add more calls here
     };*/
 
-    std::string CALLS_FILE = "ensemble_random.txt";
+    std::string CALLS_FILE = "ensemble_single.txt";
     std::vector<std::vector<std::string>> id_sets = load_id_sets(CALLS_FILE);
 
     std::vector<EvaluationCall> all_calls;
-    for (auto& c : make_calls_random(id_sets))          all_calls.push_back(c);
-    /*for (auto& c : make_calls_grow(id_sets))            all_calls.push_back(c);
-    for (auto& c : make_calls_grow_destroy(id_sets))    all_calls.push_back(c);
-    for (auto& c : make_calls_weighted_random(id_sets)) all_calls.push_back(c);*/
+    //for (auto& c : make_calls_random(id_sets))          all_calls.push_back(c);
+    for (auto& c : make_calls_grow(id_sets))            all_calls.push_back(c);
+    //for (auto& c : make_calls_grow_destroy(id_sets))    all_calls.push_back(c);
+    //for (auto& c : make_calls_weighted_random(id_sets)) all_calls.push_back(c);
 
     std::vector<std::future<int>> futures;
 
-    for (const auto& call : all_calls) {
-        futures.push_back(std::async(std::launch::async, [call]() {
-            std::vector<const char*> argv;
-            for (const auto& s : call.args) argv.push_back(s.c_str());
-            return evaluation_main((int)argv.size(), (char**)argv.data(), false, call.vote_for_all_phases);
-        }));
-    }
+    constexpr size_t BATCH_SIZE = 5;
 
-    // Wait for all and collect results
-    for (auto& f : futures)
-        f.get();
+    for (size_t start = 0; start < 5; start += BATCH_SIZE) {
+        std::vector<std::future<int>> futures;
+
+        size_t end = std::min(start + BATCH_SIZE, all_calls.size());
+
+        // Launch up to 5 tasks
+        for (size_t i = start; i < end; ++i) {
+            const auto& call = all_calls[i];
+
+            futures.push_back(std::async(std::launch::async, [call]() {
+                std::vector<const char*> argv;
+
+                for (size_t j = 0; j < call.args.size(); ++j) {
+                    argv.push_back(call.args[j].c_str());
+                }
+
+                return evaluation_main(
+                    static_cast<int>(argv.size()),
+                    (char**)argv.data(),
+                    false,
+                    call.vote_for_all_phases
+                );
+            }));
+        }
+
+        // Wait for this batch to complete
+        for (size_t i = 0; i < futures.size(); ++i) {
+            futures[i].get();
+        }
+    }
 
     return 0;
 }

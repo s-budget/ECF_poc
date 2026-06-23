@@ -107,8 +107,8 @@ std::vector<int> sample_fitness_weighted(
 
 int ensemble_preparation_main(int argc, char** argv)
 {
-    constexpr int N_SINGLE   = 10;
-    constexpr int N_SETS     = 20;
+    constexpr int N_SINGLE   = 50;
+    constexpr int N_SETS     = 50;
     constexpr int SET_SIZE   =  5;
 
     std::map<int, double> fitnesses = load_all_fitnesses();

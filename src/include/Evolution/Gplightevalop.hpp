@@ -5,6 +5,7 @@
 #include "../agent/Evaluator.hpp"
 #include "../agent/GPLightAgent.hpp"
 #include "../agent/ImprovedGPLightAgent.hpp"
+#include "../agent/GplightagentWihtCurrentPhase.hpp"
 
 #include <vector>
 #include <memory>
@@ -48,5 +49,6 @@ namespace evolution {
 
     using GPLightEvalOpBasic    = GPLightEvalOp<traffic::GPLightAgent>;
     using GPLightEvalOpImproved = GPLightEvalOp<traffic::ImprovedGPLightAgent>;
+    using GPLightEvalOpCurrent = GPLightEvalOp<traffic::GPLightAgentWithCurrentPhase>;
 
 } // namespace evolution
