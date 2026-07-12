@@ -11,13 +11,16 @@
 #include <iostream>
 #include <stdexcept>
 using namespace std;
+
 namespace traffic {
 
-// Action with an explicit duration in steps.
-// In free mode (action_interval_ == -1) duration is always respected.
-// In red/green mode (action_interval_ > 0) this struct is not used.
-
-
+/**
+ * @brief Controls the simulation loop and coordinates agent actions.
+ *
+ * Supports two execution modes:
+ * - Free mode: agents provide timed sequences of actions.
+ * - Red/green mode: agents provide separate red and green actions per cycle.
+ */
 class SimulationRunner {
 public:
     SimulationRunner(shared_ptr<SimulatorEngine> engine,
@@ -41,6 +44,12 @@ public:
             cout << "[SimulationRunner] Setup complete. ";
     }
 
+    /**
+     * @brief Runs a complete simulation episode using the provided agents.
+     *
+     * Resets the simulator and agents, selects the execution mode, and returns
+     * the final simulation state after completion.
+     */
     SimulationState run(const vector<shared_ptr<Agent>>& agents) {
         if (!setup_done_)
             throw runtime_error("SimulationRunner::run: call setup() first.");
@@ -66,10 +75,9 @@ public:
 
 private:
     // -----------------------------------------------------------------------
-    // Mode 1 — free mode (action_interval_ == -1)
-    // Each intersection independently moves to the next action once the
-    // current one's duration expires. Agents are asked only when their queue
-    // runs out.
+    // Free mode:
+    // Each intersection manages its own action queue. Agents are queried only
+    // when their current sequence of actions has finished.
     // -----------------------------------------------------------------------
     void runFreeMode(const vector<shared_ptr<Agent>>&    agents,
                      map<string, deque<TimedAction>>&     queues,
@@ -106,9 +114,7 @@ private:
                             changed_actions.push_back(q.front().action);
                             any_changed = true;
                         }
-                        // queue just ran out — will refill next step
                     }
-                    // else: still running current action, nothing to apply
                 }
             }
 
@@ -120,19 +126,13 @@ private:
     }
 
     // -----------------------------------------------------------------------
-    // Mode 2 — red/green single-action mode (action_interval_ > 0)
-    // At the start of each cycle a fresh state is fetched and each agent
-    // returns exactly 2 actions: [red, green].
-    // The runner applies red to all intersections, waits red_interval_ steps,
-    // then applies green to all and waits action_interval_ steps, then repeats.
-    //
-    // action_interval_  — duration of the green phase (steps)
-    // red_interval_     — duration of the red phase (steps), used ONLY here
+    // Red/green mode:
+    // All intersections switch together. Agents provide a red action followed
+    // by a green action, and the runner controls the timing of both phases.
     // -----------------------------------------------------------------------
     void runRedGreenMode(const vector<shared_ptr<Agent>>& agents)
     {
         while (!engine_->isDone() && engine_->currentStep() < max_steps_) {
-            // Fetch fresh state and ask agents at the start of each cycle
             SimulationState state = engine_->getState(verbose_, true);
             if (verbose_) printSimulationState(state);
 
@@ -147,21 +147,19 @@ private:
                 }
             }
 
-            // --- Red phase ---
+            // Apply all red actions before allowing the next green phase.
             engine_->applyActions(reds);
             for (int i = 0; i < red_interval_ && !engine_->isDone() && engine_->currentStep() < max_steps_; i++)
                 engine_->step();
 
             if (engine_->isDone() || engine_->currentStep() >= max_steps_) break;
 
-            // --- Green phase ---
+            // Apply green actions and advance until the next decision cycle.
             engine_->applyActions(greens);
             for (int i = 0; i < action_interval_ && !engine_->isDone() && engine_->currentStep() < max_steps_; i++)
                 engine_->step();
         }
     }
-
-    // -----------------------------------------------------------------------
 
     shared_ptr<SimulatorEngine> engine_;
     int                         max_steps_;

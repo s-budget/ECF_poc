@@ -1,5 +1,5 @@
 #include "ensembleConcurrentMain.h"
-#include "evaluationMain.h"  // wherever evaluation_main is declared
+#include "evaluationMain.h"
 
 #include <future>
 #include <vector>
@@ -8,12 +8,22 @@
 #include <sstream>
 #include <iostream>
 
+/**
+ * @brief Stores one evaluation call configuration.
+ *
+ * Contains the command arguments and voting strategy used by the ensemble.
+ */
 struct EvaluationCall {
     std::vector<std::string> args;
     bool vote_for_all_phases;
 };
 
-// Reads file where each row has 1-5 numbers
+/**
+ * @brief Loads sets of agent identifiers from a file.
+ *
+ * Each line represents one ensemble configuration and contains a list of
+ * intersection or agent identifiers.
+ */
 static std::vector<std::vector<std::string>> load_id_sets(const std::string& filepath)
 {
     std::vector<std::vector<std::string>> result;
@@ -34,6 +44,12 @@ static std::vector<std::vector<std::string>> load_id_sets(const std::string& fil
     }
     return result;
 }
+
+/**
+ * @brief Creates evaluation calls for a specific ensemble generation mode.
+ *
+ * Generates both voting strategies for every provided set of agents.
+ */
 static std::vector<EvaluationCall> make_calls_for_mode(
    const std::vector<std::vector<std::string>>& id_sets,
    const std::string& mode)
@@ -57,6 +73,7 @@ static std::vector<EvaluationCall> make_calls_for_mode(
     return calls;
 }
 
+// Generate calls for the different ensemble creation strategies.
 static std::vector<EvaluationCall> make_calls_random(const std::vector<std::vector<std::string>>& id_sets)
 {
     return make_calls_for_mode(id_sets, "RANDOM");
@@ -77,35 +94,35 @@ static std::vector<EvaluationCall> make_calls_weighted_random(const std::vector<
     return make_calls_for_mode(id_sets, "WEIGHTEDRANDOM");
 }
 
-
+/**
+ * @brief Runs ensemble evaluations concurrently in batches.
+ *
+ * Creates all evaluation tasks, executes them with limited parallelism,
+ * and waits for each batch to finish before starting the next one.
+ */
 int ensemble_concurrent_main(int argc, char** argv)
 {
-    /*std::vector<EvaluationCall> all_calls = {
-        {{"exe", "RANDOM",      "ensemble_1", "1", "2", "3"}, false},
-        {{"exe", "GROW",        "ensemble_2", "4", "5"},       true},
-        {{"exe", "GROWDESTROY", "ensemble_3", "6", "7", "8"}, false},
-        // ... add more calls here
-    };*/
 
-    std::string CALLS_FILE = "ensemble_single.txt";
+    std::string CALLS_FILE = "ensemble_single.txt";//TODO add support for diferent files for creation ways
     std::vector<std::vector<std::string>> id_sets = load_id_sets(CALLS_FILE);
 
+    // Build evaluation tasks for all ensemble creation modes.
     std::vector<EvaluationCall> all_calls;
-    //for (auto& c : make_calls_random(id_sets))          all_calls.push_back(c);
+    for (auto& c : make_calls_random(id_sets))          all_calls.push_back(c);
     for (auto& c : make_calls_grow(id_sets))            all_calls.push_back(c);
-    //for (auto& c : make_calls_grow_destroy(id_sets))    all_calls.push_back(c);
-    //for (auto& c : make_calls_weighted_random(id_sets)) all_calls.push_back(c);
+    for (auto& c : make_calls_grow_destroy(id_sets))    all_calls.push_back(c);
+    for (auto& c : make_calls_weighted_random(id_sets)) all_calls.push_back(c);
 
     std::vector<std::future<int>> futures;
 
     constexpr size_t BATCH_SIZE = 5;
 
-    for (size_t start = 0; start < 5; start += BATCH_SIZE) {
+    // Execute evaluations in fixed-size batches to limit resource usage.
+    for (size_t start = 0; start < all_calls.size(); start += BATCH_SIZE) {
         std::vector<std::future<int>> futures;
 
         size_t end = std::min(start + BATCH_SIZE, all_calls.size());
 
-        // Launch up to 5 tasks
         for (size_t i = start; i < end; ++i) {
             const auto& call = all_calls[i];
 
@@ -125,7 +142,7 @@ int ensemble_concurrent_main(int argc, char** argv)
             }));
         }
 
-        // Wait for this batch to complete
+        // Wait for all evaluations in the current batch.
         for (size_t i = 0; i < futures.size(); ++i) {
             futures[i].get();
         }

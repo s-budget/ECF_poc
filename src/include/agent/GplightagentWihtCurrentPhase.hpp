@@ -166,7 +166,7 @@ private:
                 w3 += state.queue_lengths_per_lane.at(intersectionRoadData.roadTurnLanes[intersectionRoadData.phasesData[phase].movements[i].outboundRoadId][TurnType::TurnRight][j]);
             }
 
-            tm_features.push_back({ w0, w1, w2, w3, c0, c1, c2, c3, (current_phase?1.0:-1.0) });
+            tm_features.push_back({ w0, w1, w2, w3, c0, c1, c2, c3, (current_phase?20.0:-20.0) });
         }
         return tm_features;
     }

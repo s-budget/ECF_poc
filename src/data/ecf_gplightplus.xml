@@ -3,8 +3,8 @@
         <Tree>
             <Entry key="terminalset">W0 W1 W2 W3 C0 C1 C2 C3 [-1 1]</Entry>
             <Entry key="functionset">+ - / *</Entry>
-            <Entry key="maxdepth">7</Entry>
-            <Entry key="initmindepth">4</Entry>
+            <Entry key="maxdepth">6</Entry>
+            <Entry key="initmindepth">3</Entry>
         </Tree>
     </Genotype>
     <Algorithm>

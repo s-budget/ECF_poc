@@ -12,6 +12,12 @@
 
 namespace traffic {
 
+/**
+ * @brief Traffic light agent using a genetic programming tree to evaluate phases.
+ *
+ * The agent extracts traffic features for each possible phase, evaluates them
+ * using the configured GP tree, and selects the phase with the highest urgency.
+ */
 class GPLightAgent : public Agent {
 public:
     GPLightAgent(const std::string& intersection_id,
@@ -26,9 +32,12 @@ public:
         , red_duration_(red_duration)
     {}
 
+    /**
+     * @brief Assigns the GP decision tree used for phase evaluation.
+     */
     void setTree(Tree::Tree* tree) { tree_ = tree; }
 
-    // Legacy single-action interface
+    // Selects the phase with the highest GP-evaluated urgency.
     IntersectionAction selectAction(const IntersectionState& state) override
     {
         auto [best_phase, urgencies] = rankPhases(state);
@@ -43,9 +52,8 @@ public:
         return urgencies;
     }
 
-    // Free mode:
-    //   - phase changed -> [red(red_duration_), new_action(action_duration_)]
-    //   - phase same    -> [action(action_duration_)]
+    // Returns timed actions. When the selected phase changes, a red transition
+    // phase is inserted before activating the new green phase.
     std::vector<TimedAction> selectActions(const IntersectionState& state) override
     {
         int prev_phase = last_phase_;
@@ -66,9 +74,8 @@ public:
         }
     }
 
-    // Red/green mode:
-    //   - phase changed -> red=default_red_phase_, green=new_phase
-    //   - phase same    -> green=same_phase, green=same_phase
+    // Provides red/green actions for simulators that handle phase transitions
+    // externally.
     std::pair<IntersectionAction, IntersectionAction>
     selectRedGreenActions(const IntersectionState& state) override
     {
@@ -94,9 +101,8 @@ private:
     int         action_duration_   = 10;
     int         red_duration_      = 5;
 
-    // -----------------------------------------------------------------------
-    // Shared core: evaluate every phase, return {best_phase, urgency_per_phase}
-    // -----------------------------------------------------------------------
+    // Evaluates all available phases and returns both the selected phase and
+    // the urgency score assigned to every phase.
     std::pair<int, std::vector<double>>
     rankPhases(const IntersectionState& state)
     {
@@ -119,6 +125,11 @@ private:
         return { best_phase, urgencies };
     }
 
+    /**
+     * @brief Evaluates a feature vector using the GP expression tree.
+     *
+     * Feature values are assigned to the tree terminals before execution.
+     */
     double evaluateTree(const std::vector<double>& features)
     {
         static const std::string featureNames[] = {
@@ -136,10 +147,17 @@ private:
         return result;
     }
 
+    /**
+     * @brief Extracts GP input features for all turn movements in a phase.
+     *
+     * Each movement is represented by downstream and upstream traffic values:
+     * waiting vehicles and current vehicle counts for the connected lanes.
+     */
     std::vector<std::vector<double>>
     extractTMFeatures(const IntersectionState& state, int phase)
     {
         std::vector<std::vector<double>> tm_features;
+
         for (int i = 0; i < intersectionRoadData.phasesData[phase].movements.size(); i++) {
             double c0 = 0, w0 = 0;
             for (int j = 0; j < intersectionRoadData.phasesData[phase].movements[i].inboundLaneIds.size(); j++) {
@@ -167,6 +185,7 @@ private:
 
             tm_features.push_back({ w0, w1, w2, w3, c0, c1, c2, c3 });
         }
+
         return tm_features;
     }
 };

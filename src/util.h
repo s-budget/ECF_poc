@@ -1,6 +1,8 @@
 #pragma once
 #include <ecf/ECF.h>
 
+#include "include/agent/GplightagentWihtCurrentPhase.hpp"
+
 struct IntersectionData;
 
 namespace traffic {
@@ -24,4 +26,10 @@ makeGPLightAgentsFromExperiments(
     const std::vector<int>&                                  experiment_ids,
     const std::shared_ptr<traffic::SimulatorEngine>&                  engine,
     const std::map<std::string, IntersectionData>&  intersections);
+
+    std::map<std::string, std::vector<std::shared_ptr<traffic::GPLightAgentWithCurrentPhase>>>
+makeGPLightAgentsWithCurrentFromExperiments(
+const std::vector<int>&                                  experiment_ids,
+const std::shared_ptr<traffic::SimulatorEngine>&                  engine,
+const std::map<std::string, IntersectionData>&  intersections);
 }

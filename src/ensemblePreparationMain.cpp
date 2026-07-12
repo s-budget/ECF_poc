@@ -17,7 +17,12 @@ namespace fs = std::filesystem;
 namespace
 {
 
-// Returns a map of experiment_id -> fitness value for all existing experiments
+/**
+ * @brief Loads fitness values from all available experiment folders.
+ *
+ * Searches experiment directories and returns a mapping between experiment
+ * identifiers and their stored fitness values.
+ */
 std::map<int, double> load_all_fitnesses()
 {
     std::map<int, double> fitnesses;
@@ -46,7 +51,11 @@ std::map<int, double> load_all_fitnesses()
     return fitnesses;
 }
 
-// Sample `count` unique IDs from `pool` with equal probability
+/**
+ * @brief Samples unique experiment IDs uniformly at random.
+ *
+ * Every experiment in the input pool has the same probability of selection.
+ */
 std::vector<int> sample_uniform(
     const std::vector<int>& pool,
     int count,
@@ -61,7 +70,12 @@ std::vector<int> sample_uniform(
     return { shuffled.begin(), shuffled.begin() + count };
 }
 
-// Sample `count` unique IDs from `pool` weighted by 1/fitness (lower = better)
+/**
+ * @brief Samples unique experiment IDs using fitness-based probabilities.
+ *
+ * Experiments with better fitness values receive higher probability by using
+ * inverse fitness weighting.
+ */
 std::vector<int> sample_fitness_weighted(
     const std::vector<int>& pool,
     const std::map<int, double>& fitnesses,
@@ -72,7 +86,6 @@ std::vector<int> sample_fitness_weighted(
         throw std::runtime_error(
             "Not enough experiments to sample " + std::to_string(count));
 
-    // Build parallel arrays of ids and weights
     std::vector<int>    ids;
     std::vector<double> weights;
     ids.reserve(pool.size());
@@ -87,15 +100,13 @@ std::vector<int> sample_fitness_weighted(
     std::vector<int> result;
     result.reserve(count);
 
-    // Weighted sampling without replacement:
-    // each round pick one, then remove it and renormalize
+    // Weighted sampling without replacement.
     for (int pick = 0; pick < count; ++pick)
     {
         std::discrete_distribution<int> dist(weights.begin(), weights.end());
         int chosen_idx = dist(rng);
         result.push_back(ids[chosen_idx]);
 
-        // Remove chosen from consideration
         ids.erase(ids.begin() + chosen_idx);
         weights.erase(weights.begin() + chosen_idx);
     }
@@ -105,6 +116,12 @@ std::vector<int> sample_fitness_weighted(
 
 } // anonymous namespace
 
+/**
+ * @brief Generates experiment sets used for ensemble evaluation.
+ *
+ * Creates files containing individual experiments and groups of experiments
+ * selected using different sampling strategies.
+ */
 int ensemble_preparation_main(int argc, char** argv)
 {
     constexpr int N_SINGLE   = 50;
@@ -121,7 +138,7 @@ int ensemble_preparation_main(int argc, char** argv)
 
     std::cout << "Found " << fitnesses.size() << " experiments.\n";
 
-    // Collect all available IDs into a vector
+    // Collect all available experiment IDs.
     std::vector<int> all_ids;
     all_ids.reserve(fitnesses.size());
     for (const auto& [id, _] : fitnesses)
@@ -129,7 +146,7 @@ int ensemble_preparation_main(int argc, char** argv)
 
     std::mt19937 rng(std::random_device{}());
 
-    // ---- File 1: 20 random single IDs ----
+    // Generate a file containing individual experiment IDs.
     {
         std::vector<int> singles = sample_uniform(all_ids, N_SINGLE, rng);
 
@@ -140,7 +157,7 @@ int ensemble_preparation_main(int argc, char** argv)
         std::cout << "Written: ensemble_single.txt\n";
     }
 
-    // ---- File 2: 20 sets of 5, uniform random ----
+    // Generate uniformly sampled experiment groups.
     {
         std::ofstream f("ensemble_random.txt");
         for (int s = 0; s < N_SETS; ++s)
@@ -157,7 +174,7 @@ int ensemble_preparation_main(int argc, char** argv)
         std::cout << "Written: ensemble_random.txt\n";
     }
 
-    // ---- File 3: 20 sets of 5, fitness-weighted ----
+    // Generate groups biased towards experiments with better fitness.
     {
         std::ofstream f("ensemble_fitness_weighted.txt");
         for (int s = 0; s < N_SETS; ++s)

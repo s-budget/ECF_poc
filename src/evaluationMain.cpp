@@ -18,7 +18,13 @@ using namespace traffic;
 namespace fs = std::filesystem;
 
 
-// Finds the best candidate to ADD to experiment_ids (lowest mean travel time)
+/**
+ * @brief Performs one step of the greedy ensemble growing process.
+ *
+ * Tests every experiment that is not already in the current ensemble.
+ * The candidate that produces the lowest mean travel time after being added
+ * is selected.
+ */
 int growStep(
     const vector<int>& experiment_ids,
     const map<int, int>& experiment_index,
@@ -27,6 +33,7 @@ int growStep(
     const map<string, vector<shared_ptr<GPLightAgent>>>& all_agents,
     const bool vote_for_all_phases)
 {
+    // Find all experiments that can still be added to the ensemble.
     vector<int> candidates;
     for (const auto& [exp_id, _] : experiment_index)
         if (find(experiment_ids.begin(), experiment_ids.end(), exp_id) == experiment_ids.end())
@@ -35,23 +42,29 @@ int growStep(
     int    best_candidate = -1;
     double best_fitness   = std::numeric_limits<double>::max();
 
+    // Evaluate each possible addition by running a complete simulation.
     for (int candidate : candidates)
     {
         vector<int> trial_ids = experiment_ids;
         trial_ids.push_back(candidate);
 
+        // Create an ensemble agent for every intersection using the current
+        // experiment set plus the tested candidate.
         vector<shared_ptr<Agent>> trial_ensemble;
         for (const auto& intersection_id : engine->getIntersectionIDs())
         {
             int phases = engine->getPhaseCount(intersection_id);
             vector<shared_ptr<Agent>> sub_agents;
+
             for (int exp_id : trial_ids)
                 sub_agents.push_back(all_agents.at(intersection_id)[experiment_index.at(exp_id)]);
+
             trial_ensemble.push_back(make_shared<EnsembleGPLightAgent>(
                 intersection_id, phases, intersections.at(intersection_id), std::move(sub_agents),vote_for_all_phases));
         }
 
-        traffic::SimulationRunner trial_runner(engine, 100, 5, false, 5);
+        // Run the simulation to measure the performance of this ensemble.
+        traffic::SimulationRunner trial_runner(engine, 3600, 5, false, 5);
         trial_runner.setup();
         traffic::SimulationState trial_state = trial_runner.run(trial_ensemble);
 
@@ -68,7 +81,13 @@ int growStep(
     return best_candidate;
 }
 
-// Finds the best candidate to REMOVE from experiment_ids (lowest mean travel time without it)
+
+/**
+ * @brief Performs one step of the greedy ensemble reduction process.
+ *
+ * Tests removing every experiment currently in the ensemble.
+ * The experiment whose removal gives the best simulation result is removed.
+ */
 int destroyStep(
     const vector<int>& experiment_ids,
     const map<int, int>& experiment_index,
@@ -80,22 +99,27 @@ int destroyStep(
     int    best_candidate = -1;
     double best_fitness   = std::numeric_limits<double>::max();
 
+    // Try removing each current ensemble member and evaluate the result.
     for (int candidate : experiment_ids)
     {
         vector<int> trial_ids = experiment_ids;
         trial_ids.erase(std::remove(trial_ids.begin(), trial_ids.end(), candidate), trial_ids.end());
 
+        // Build an ensemble without the currently tested experiment.
         vector<shared_ptr<Agent>> trial_ensemble;
         for (const auto& intersection_id : engine->getIntersectionIDs())
         {
             int phases = engine->getPhaseCount(intersection_id);
             vector<shared_ptr<Agent>> sub_agents;
+
             for (int exp_id : trial_ids)
                 sub_agents.push_back(all_agents.at(intersection_id)[experiment_index.at(exp_id)]);
+
             trial_ensemble.push_back(make_shared<EnsembleGPLightAgent>(
                 intersection_id, phases, intersections.at(intersection_id), std::move(sub_agents),vote_for_all_phases));
         }
 
+        // Evaluate the smaller ensemble through simulation.
         traffic::SimulationRunner trial_runner(engine, 3600, 5, false, 5);
         trial_runner.setup();
         traffic::SimulationState trial_state = trial_runner.run(trial_ensemble);
@@ -112,9 +136,16 @@ int destroyStep(
     cout << "DESTROY picked " << best_candidate << " (fitness: " << best_fitness << " s)\n";
     return best_candidate;
 }
-
+/**
+ * @brief Evaluates an ensemble of GP traffic light agents.
+ *
+ * Loads selected GP agents, optionally optimizes the ensemble composition
+ * using GROW or GROWDESTROY strategies, runs the traffic simulation, and
+ * stores the resulting fitness metrics.
+ */
 int evaluation_main(int argc, char** argv, bool verbose, bool vote_for_all_phases)
 {
+    // Configure output mode depending on whether detailed logs are required.
     if (!verbose) {
         cout.rdbuf(nullptr);
         cerr.rdbuf(nullptr);
@@ -124,21 +155,21 @@ int evaluation_main(int argc, char** argv, bool verbose, bool vote_for_all_phase
         freopen("total_output.txt", "a", stderr);
     }
 
-    // Expected: <exe> <mode> <id1> [id2] [id3] [id4] [id5]
-    // mode: RANDOM | WEIGHTEDRANDOM | GROW | GROWDESTROY
-    // ids:  1 to 5 integers
-
+    // Expected arguments:
+    // <exe> <mode> <ensembleName> [id1] [id2] [id3] [id4] [id5]
+    // Modes define how the ensemble is created or optimized.
     if (argc < 4) {
         cerr << "Usage: " << argv[0]
              << " <RANDOM|WEIGHTEDRANDOM|GROW|GROWDESTROY>"
              << " <ensembleName>"
-             << " <id1> [id2] [id3] [id4] [id5]\n";
+             << " [id1] [id2] [id3] [id4] [id5]\n";
         return 1;
     }
 
     const string mode                 = argv[1];
     const string ensembleExperimentName = argv[2];
 
+    // Validate ensemble creation mode.
     if (mode != "RANDOM" && mode != "WEIGHTEDRANDOM" &&
         mode != "GROW"   && mode != "GROWDESTROY")
     {
@@ -147,6 +178,7 @@ int evaluation_main(int argc, char** argv, bool verbose, bool vote_for_all_phase
         return 1;
     }
 
+    // Read selected experiment IDs from command line.
     const int n_ids = argc - 3;
     if (n_ids < 1 || n_ids > 5) {
         cerr << "Expected 1 to 5 experiment IDs, got " << n_ids << '\n';
@@ -168,6 +200,7 @@ int evaluation_main(int argc, char** argv, bool verbose, bool vote_for_all_phase
     for (int id : experiment_ids) cout << ' ' << id;
     cout << '\n';
 
+    // Initialize the traffic simulator.
     EngineConfig cfg;
     cfg.type        = SimulatorType::CityFlow;
     cfg.config_file = "src/data/cityflow_config_hangzhou_4x4.json";
@@ -178,10 +211,12 @@ int evaluation_main(int argc, char** argv, bool verbose, bool vote_for_all_phase
     auto engine = createEngine(cfg);
     engine->initialize();
 
+    // Load road network information and prepare containers for GP agents.
     map<string, IntersectionData> intersections = loadFromConfig(cfg.config_file);
     map<string, vector<shared_ptr<GPLightAgent>>> all_agents;
     map<int, int> experiment_index; // experiment_id -> index in the vectors above
 
+    // Load all available experiments when ensemble optimization is required.
     if (mode == "GROW" || mode == "GROWDESTROY")
     {
         vector<int> all_ids;
@@ -204,7 +239,7 @@ int evaluation_main(int argc, char** argv, bool verbose, bool vote_for_all_phase
              << " experiments for " << mode << " mode.\n";
     }
 
-    // ---- GROW: iteratively find the best set of 5 experiment IDs ----
+    // Gradually build an ensemble by repeatedly adding the best performing agent.
     if (mode == "GROW")
     {
         while ((int)experiment_ids.size() < 5) {
@@ -212,7 +247,9 @@ int evaluation_main(int argc, char** argv, bool verbose, bool vote_for_all_phase
             experiment_ids.push_back(growStep(experiment_ids, experiment_index, engine, intersections, all_agents,vote_for_all_phases));
         }
     }
-    // ---- GROW: iteratively find the best set of 10 experiment IDs and then remove 5 usless ones ----
+
+    // First grow an ensemble of 10 agents, then remove the least useful agents
+    // until only the best 5 remain.
     if (mode == "GROWDESTROY")
     {
         while ((int)experiment_ids.size() < 10)
@@ -225,14 +262,13 @@ int evaluation_main(int argc, char** argv, bool verbose, bool vote_for_all_phase
         }
     }
 
-    // ---- RANDOM / WEIGHTEDRANDOM / final GROW evaluation ----
-    // At this point experiment_ids is the final set regardless of mode
-
-
+    // Create the final ensemble from the selected GP experiments.
     auto agents_per_intersection =
         util::makeGPLightAgentsFromExperiments(experiment_ids, engine, intersections);
 
     vector<shared_ptr<Agent>> ensemble_agents;
+
+    // Build one ensemble agent for every intersection in the road network.
     for (const auto& id : engine->getIntersectionIDs()) {
         int phases = engine->getPhaseCount(id);
 
@@ -246,16 +282,18 @@ int evaluation_main(int argc, char** argv, bool verbose, bool vote_for_all_phase
                 std::move(sub_agents),vote_for_all_phases));
     }
 
-    traffic::SimulationRunner runner(engine, 600, 5, false, 5);
+    // Run simulation using the final ensemble.
+    traffic::SimulationRunner runner(engine, 3600, 5, false, 5);
     runner.setup();
 
     traffic::SimulationState sState = runner.run(ensemble_agents);
+
     for (int id : experiment_ids)
         cout << id << ' ';
     cout << '\n';
     cout << "Mean travel time: " << sState.mean_travel_time << " s\n";
 
-    // Write ensemble result file
+    // Save ensemble performance metrics and selected experiment IDs.
     {
         string filename = "experiments/ENSEMBLE_FITNESS_FOR_" + ensembleExperimentName + ".txt";
         ofstream f(filename);
@@ -270,4 +308,3 @@ int evaluation_main(int argc, char** argv, bool verbose, bool vote_for_all_phase
 
     return static_cast<int>(sState.mean_travel_time);
 }
-

@@ -1,4 +1,5 @@
 #pragma once
+
 #include <ecf/ECF.h>
 #include <ecf/tree/Tree.h>
 
@@ -12,6 +13,12 @@
 
 namespace evolution {
 
+    /**
+     * @brief Evaluation operator for GP-based traffic light agents.
+     *
+     * Assigns an evolved GP tree to each agent and evaluates the resulting
+     * traffic control policy using the simulator.
+     */
     template<typename TAgent>
     class GPLightEvalOp : public EvaluateOp {
     public:
@@ -19,6 +26,12 @@ namespace evolution {
 
         bool initialize(StateP state) override { return true; }
 
+        /**
+         * @brief Configures the evaluator with simulation evaluator and agents.
+         *
+         * Stores the agents that will receive the evolved GP tree during
+         * evaluation and keeps a base agent list for simulation execution.
+         */
         void setup(Evaluator evaluator,
                    std::vector<std::shared_ptr<TAgent>> agents)
         {
@@ -28,6 +41,12 @@ namespace evolution {
                 base_agents_.push_back(a);
         }
 
+        /**
+         * @brief Evaluates one GP individual using the traffic simulation.
+         *
+         * The individual's tree is assigned to all agents before running the
+         * simulation. The returned fitness represents the achieved travel time.
+         */
         FitnessP evaluate(IndividualP individual) override
         {
             Tree::Tree* tree =
@@ -47,6 +66,7 @@ namespace evolution {
         std::vector<std::shared_ptr<traffic::Agent>> base_agents_;
     };
 
+    // Evaluation operators for the different GP traffic light agent variants.
     using GPLightEvalOpBasic    = GPLightEvalOp<traffic::GPLightAgent>;
     using GPLightEvalOpImproved = GPLightEvalOp<traffic::ImprovedGPLightAgent>;
     using GPLightEvalOpCurrent = GPLightEvalOp<traffic::GPLightAgentWithCurrentPhase>;

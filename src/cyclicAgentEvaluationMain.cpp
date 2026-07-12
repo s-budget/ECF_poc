@@ -16,6 +16,12 @@ using namespace std;
 using namespace traffic;
 namespace fs = std::filesystem;
 
+/**
+ * @brief Runs a traffic simulation using cyclic traffic light agents.
+ *
+ * Creates the simulator, loads intersection data, assigns a cyclic agent
+ * to every intersection, and stores the resulting simulation metrics.
+ */
 int cyclicEvaluation_main(int argc, char** argv)
 {
 
@@ -31,6 +37,7 @@ int cyclicEvaluation_main(int argc, char** argv)
 
     map<string, IntersectionData> intersections = loadFromConfig(cfg.config_file);
 
+    // Create one cyclic traffic light agent for each simulated intersection.
     vector<shared_ptr<Agent>> agents;
     for (const auto& id : engine->getIntersectionIDs()) {
         int phases = engine->getPhaseCount(id);
@@ -41,12 +48,13 @@ int cyclicEvaluation_main(int argc, char** argv)
                 id, phases, intersections.at(id)));
     }
 
+    // Run the simulation using fixed cyclic signal control.
     traffic::SimulationRunner runner(engine, 3600, 30, false, 5);
     runner.setup();
 
     traffic::SimulationState sState = runner.run(agents);
 
-    // Write ensemble result file
+    // Write simulation metrics to a result file.
     {
         string filename = "experiments/CYCLIC_RESULTS.txt";
         ofstream f(filename);
@@ -59,4 +67,3 @@ int cyclicEvaluation_main(int argc, char** argv)
 
     return static_cast<int>(sState.mean_travel_time);
 }
-

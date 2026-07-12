@@ -14,21 +14,64 @@
 
 // nlohmann/json
 #include "json.hpp"
+
 using json = nlohmann::json;
-enum class CardinalDir { North = 0, East = 1, South = 2, West = 3 };
 
-enum class TurnType { Straight = 0, TurnLeft = 1, TurnRight = 2 };
+/**
+ * @brief Cardinal directions used to assign roads around an intersection.
+ *
+ * Roads are classified according to their geometric orientation relative
+ * to an intersection. This allows intersection movements to be described
+ * independently of the road IDs used in the road network.
+ */
+enum class CardinalDir {
+    North = 0,
+    East  = 1,
+    South = 2,
+    West  = 3
+};
 
-enum class RoadDir { Inbound, Outbound };
+/**
+ * @brief Supported turning movements for an incoming road.
+ */
+enum class TurnType {
+    Straight = 0,
+    TurnLeft = 1,
+    TurnRight = 2
+};
 
+/**
+ * @brief Indicates whether a road is entering or leaving an intersection.
+ */
+enum class RoadDir {
+    Inbound,
+    Outbound
+};
+
+/**
+ * @brief Unique identifier of an intersection movement.
+ *
+ * A movement is defined by the approach direction and the turn
+ * vehicles perform from that approach.
+ */
 struct MovementKey {
+    /// Cardinal direction from which vehicles approach.
     CardinalDir from;
-    TurnType    turn;
+
+    /// Turning movement performed by the vehicles.
+    TurnType turn;
+
+    /**
+     * @brief Equality operator for hash-based containers.
+     */
     bool operator==(MovementKey const& o) const {
         return from == o.from && turn == o.turn;
     }
 };
 
+/**
+ * @brief Hash functor for MovementKey.
+ */
 struct MovementKeyHash {
     std::size_t operator()(MovementKey const& k) const noexcept {
         return std::hash<int>{}(static_cast<int>(k.from) * 3 +
@@ -36,14 +79,31 @@ struct MovementKeyHash {
     }
 };
 
+/**
+ * @brief Key used to identify a road by direction.
+ *
+ * Combines a cardinal direction with whether the road is inbound
+ * or outbound relative to an intersection.
+ */
 struct RoadKey {
+    /// Cardinal orientation of the road.
     CardinalDir cardinal;
-    RoadDir     direction;
+
+    /// Whether the road enters or exits the intersection.
+    RoadDir direction;
+
+    /**
+     * @brief Equality operator for hash-based containers.
+     */
     bool operator==(RoadKey const& o) const {
-        return cardinal == o.cardinal && direction == o.direction;
+        return cardinal == o.cardinal &&
+               direction == o.direction;
     }
 };
 
+/**
+ * @brief Hash functor for RoadKey.
+ */
 struct RoadKeyHash {
     std::size_t operator()(RoadKey const& k) const noexcept {
         return std::hash<int>{}(static_cast<int>(k.cardinal) * 2 +
@@ -51,91 +111,162 @@ struct RoadKeyHash {
     }
 };
 
+/**
+ * @brief Converts a movement identifier into a readable string.
+ *
+ * Example:
+ * - North + Straight -> "North_Straight"
+ * - East + Left -> "East_Left"
+ *
+ * @param k Movement key.
+ * @return Human-readable movement name.
+ */
 inline std::string movementName(MovementKey const& k) {
     static const char* dirs[]  = {"North", "East", "South", "West"};
     static const char* turns[] = {"Straight", "Left", "Right"};
+
     return std::string(dirs[static_cast<int>(k.from)]) + "_" +
            turns[static_cast<int>(k.turn)];
 }
 
-/// Lane id format: roadId + "_" + laneIndex  e.g. "road_1_0_1_0"
+/**
+ * @brief List of lane identifiers.
+ *
+ * Lane IDs follow the CityFlow convention:
+ * roadId + "_" + laneIndex
+ *
+ * Example:
+ * "road_1_0_1_0"
+ */
 using LaneList = std::vector<std::string>;
 
+/**
+ * @brief Maps a traffic movement to the corresponding inbound lane IDs.
+ */
 using MovementMap =
     std::unordered_map<MovementKey, LaneList, MovementKeyHash>;
 
-/// Lookup: (CardinalDir, RoadDir) -> road id
+/**
+ * @brief Maps a (CardinalDir, RoadDir) pair to a road identifier.
+ */
 using RoadMap =
     std::unordered_map<RoadKey, std::string, RoadKeyHash>;
 
-/// phase index -> list of lane ids that are open during that phase
+/**
+ * @brief Maps each traffic light phase to the lanes that receive green.
+ */
 using PhaseLaneMap = std::map<int, LaneList>;
 
-/// Lookup: road_id -> (TurnType -> lane_ids going that direction on that road)
-/// Built from the movements map after Step D.
-/// For a given road, e.g. roadTurnLanes["road_1_0_1"][TurnType::Straight]
-/// gives all lane ids on that road whose vehicles go straight.
+/**
+ * @brief Maps each road to its lane groups separated by turning movement.
+ *
+ * Example:
+ * roadTurnLanes["road_1_0_1"][TurnType::Straight]
+ * returns all straight-going lanes of that road.
+ */
 using RoadTurnLaneMap =
     std::unordered_map<std::string, std::map<TurnType, LaneList>>;
 
-/// One directed movement active during a phase.
+/**
+ * @brief Represents one active inbound-to-outbound movement during a phase.
+ */
 struct TurnMovement {
+    /// Incoming road.
     std::string inboundRoadId;
+
+    /// Outgoing road reached by the movement.
     std::string outboundRoadId;
-    LaneList    inboundLaneIds;   ///< sorted lane ids on the inbound road
+
+    /// Sorted list of inbound lane IDs participating in the movement.
+    LaneList inboundLaneIds;
 };
 
-/// All movements simultaneously green in one traffic-light phase.
+/**
+ * @brief Describes all movements that receive green during one traffic light phase.
+ */
 struct PhaseData {
+    /// Collection of simultaneously active turning movements.
     std::vector<TurnMovement> movements;
 };
-
-
+/**
+ * @brief Stores all preprocessed information for a single intersection.
+ *
+ * The information in this structure is derived from the CityFlow road network
+ * and is intended to make traffic signal control and state evaluation efficient
+ * during simulation.
+ */
 struct IntersectionData {
+    /// Unique intersection identifier.
     std::string id;
-    double      x, y;
-    bool        isVirtual;
 
-    /// Up to 12 movement buckets (approach direction x turn type).
-    /// Each bucket holds the ids of the inbound lanes for that movement.
-    /// Only buckets that have at least one lane are present.
+    /// Intersection coordinates from the road network.
+    double x, y;
+
+    /// Indicates whether the intersection is virtual (no traffic light/control).
+    bool isVirtual;
+
+    /// Maps each movement (approach direction + turn type) to its inbound lanes.
+    ///
+    /// At most 12 movement groups exist (4 directions × 3 turn types), although
+    /// only movements that actually exist are stored.
     MovementMap movements;
 
-    /// Lookup a road by cardinal direction and inbound/outbound.
-    /// e.g. roads[{CardinalDir::North, RoadDir::Inbound}]  = "road_1_0_1"
-    ///      roads[{CardinalDir::North, RoadDir::Outbound}] = "road_1_1_3"
+    /// Maps each cardinal direction and road orientation to its road ID.
+    ///
+    /// Example:
+    /// roads[{CardinalDir::North, RoadDir::Inbound}] = "road_1_0_1"
     RoadMap roads;
 
-    /// For each traffic light phase, the sorted list of lane ids that are
-    /// unlocked (green) during that phase.
-    /// e.g. phaseLanes[0] = {"road_0_1_0_2", "road_0_1_0_3", ...}
-    ///      phaseLanes[1] = {"road_1_0_1_0", ...}
+    /// Maps every traffic-light phase to the set of lanes receiving green.
     PhaseLaneMap phaseLanes;
 
-    /// Lookup: road_id -> (TurnType -> list of lane_ids on that road going
-    /// that direction). Derived from movements after Step D.
-    /// e.g. roadTurnLanes["road_1_0_1"][TurnType::TurnLeft] = {"road_1_0_1_0"}
-    ///      roadTurnLanes["road_1_0_1"][TurnType::Straight]  = {"road_1_0_1_1"}
+    /// Groups lane IDs by road and turn type.
+    ///
+    /// This lookup is derived from the movement information after parsing
+    /// the road network.
     RoadTurnLaneMap roadTurnLanes;
 
-    /// Per-phase breakdown: index matches phaseLanes key.
-    /// Each entry lists every inbound->outbound TurnMovement green in that phase.
+    /// Detailed movement information for every traffic-light phase.
+    ///
+    /// The vector index corresponds to the phase index.
     std::vector<PhaseData> phasesData;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Internal helpers
+//
+//  The functions below implement the geometry and parsing utilities used to
+//  transform a CityFlow road network into the application's internal
+//  intersection representation.
 // ─────────────────────────────────────────────────────────────────────────────
 namespace detail {
+
+    /**
+     * @brief Loads and parses a JSON file.
+     *
+     * @param path Path to the JSON file.
+     * @return Parsed JSON object.
+     *
+     * @throws std::runtime_error if the file cannot be opened.
+     */
     inline json loadJson(std::string const& path) {
         std::ifstream f(path);
         if (!f.is_open())
             throw std::runtime_error("Cannot open file: " + path);
+
         json j;
         f >> j;
         return j;
     }
 
+    /**
+     * @brief Converts a CityFlow road-link type string into TurnType.
+     *
+     * @param s CityFlow road-link type.
+     * @return Corresponding TurnType.
+     *
+     * @throws std::runtime_error for unknown movement types.
+     */
     inline TurnType parseTurnType(std::string const& s) {
         if (s == "go_straight") return TurnType::Straight;
         if (s == "turn_left")   return TurnType::TurnLeft;
@@ -143,24 +274,37 @@ namespace detail {
         throw std::runtime_error("Unknown road-link type: " + s);
     }
 
-    /// Smallest angular distance between two atan2 angles, result in [0, π].
+    /**
+     * @brief Computes the smallest angular difference between two directions.
+     *
+     * The returned value is always in the interval [0, π].
+     */
     inline double angleDiff(double a, double b) {
         double d = std::fmod(std::abs(a - b), 2.0 * M_PI);
         return (d > M_PI) ? 2.0 * M_PI - d : d;
     }
 
+    /**
+     * @brief Associates a cardinal direction with its ideal incoming angle.
+     *
+     * These reference angles are used when assigning physical roads
+     * to North/East/South/West based on their geometry.
+     */
     struct CardinalInfo {
+        /// Cardinal direction.
         CardinalDir dir;
-        /// Ideal atan2(dy, dx) angle of a vector pointing FROM the far road
-        /// endpoint TOWARD the intersection centre, for traffic coming from
-        /// this cardinal direction.  JSON uses screen coords (+Y = South):
-        ///   From West  → incoming vector points East  → atan2(0,+1)  =  0
-        ///   From North → incoming vector points South → atan2(+1,0)  = +π/2
-        ///   From East  → incoming vector points West  → atan2(0,-1)  = ±π
-        ///   From South → incoming vector points North → atan2(-1,0)  = -π/2
+
+        /// Expected incoming atan2 angle for this direction.
+        ///
+        /// JSON coordinates use screen coordinates (+Y points downward).
         double incomingAngle;
     };
 
+    /**
+     * @brief Returns the lookup table containing the four cardinal directions.
+     *
+     * The table is constructed only once and reused throughout parsing.
+     */
     inline std::array<CardinalInfo, 4> const& cardinalTable() {
         static const std::array<CardinalInfo, 4> t = {{
             { CardinalDir::West,   0.0          },
@@ -171,46 +315,66 @@ namespace detail {
         return t;
     }
 
-    /// Assign up to 4 inbound roads to cardinal directions using rotational order.
-    /// Only 4 offsets are tried instead of 4! = 24 permutations.
-    /// Returns: assignment[i] = index into cardinalTable() for roads[i], or -1.
+    /**
+     * @brief Assigns inbound roads to the closest cardinal directions.
+     *
+     * Rather than checking every permutation of assignments, the algorithm
+     * sorts roads by angle and evaluates only four rotational offsets,
+     * selecting the one with the smallest total angular error.
+     *
+     * @param roadAngles Measured approach angles.
+     * @param cardinals Cardinal reference table.
+     * @return Mapping from road index to cardinal table index.
+     */
     inline std::vector<int> assignRoadsToCardinals(
-        std::vector<double> const&         roadAngles,
+        std::vector<double> const& roadAngles,
         std::array<CardinalInfo, 4> const& cardinals
     ) {
         int nRoads = static_cast<int>(roadAngles.size());
 
+        // Sort roads by geometric angle.
         std::vector<int> roadOrder(nRoads);
         std::iota(roadOrder.begin(), roadOrder.end(), 0);
         std::sort(roadOrder.begin(), roadOrder.end(), [&](int a, int b) {
             return roadAngles[a] < roadAngles[b];
         });
 
+        // Sort cardinal directions by their reference angle.
         std::vector<int> cardOrder = {0, 1, 2, 3};
         std::sort(cardOrder.begin(), cardOrder.end(), [&](int a, int b) {
             return cardinals[a].incomingAngle < cardinals[b].incomingAngle;
         });
 
         std::vector<int> bestAssignment(nRoads, -1);
-        double           bestTotalError = 1e18;
+        double bestTotalError = 1e18;
 
+        // Evaluate each rotational alignment and keep the best one.
         for (int offset = 0; offset < 4; ++offset) {
             double totalError = 0.0;
+
             for (int i = 0; i < nRoads; ++i) {
                 int cardIdx = cardOrder[(offset + i) % 4];
-                totalError += angleDiff(roadAngles[roadOrder[i]],
-                                        cardinals[cardIdx].incomingAngle);
+                totalError += angleDiff(
+                    roadAngles[roadOrder[i]],
+                    cardinals[cardIdx].incomingAngle
+                );
             }
+
             if (totalError < bestTotalError) {
                 bestTotalError = totalError;
+
                 for (int i = 0; i < nRoads; ++i)
-                    bestAssignment[roadOrder[i]] = cardOrder[(offset + i) % 4];
+                    bestAssignment[roadOrder[i]] =
+                        cardOrder[(offset + i) % 4];
             }
         }
 
         return bestAssignment;
     }
 
+    /**
+     * @brief Returns the opposite cardinal direction.
+     */
     inline CardinalDir oppositeCardinal(CardinalDir d) {
         switch (d) {
             case CardinalDir::North: return CardinalDir::South;
@@ -218,105 +382,124 @@ namespace detail {
             case CardinalDir::East:  return CardinalDir::West;
             case CardinalDir::West:  return CardinalDir::East;
         }
+
         throw std::runtime_error("unreachable");
     }
 
-
-    // -----------------------------------------------------------------------------
-    //  Classify lanes on a single road as seen from its destination intersection.
-    //
-    //  Runs the same Steps A/B/D logic on the destination intersection JSON to
-    //  determine which TurnType each lane of `roadId` takes there.
-    //  If the destination is virtual, returns a single Straight entry for all lanes.
-    // -----------------------------------------------------------------------------
+    /**
+     * @brief Classifies all lanes of a road according to their turning movement
+     * at the destination intersection.
+     *
+     * This function mirrors the same parsing logic used while constructing the
+     * main road network representation, but only for a single destination
+     * intersection.
+     *
+     * @param destInterJson Destination intersection JSON.
+     * @param roadId Road being classified.
+     * @param destX Destination X coordinate.
+     * @param destY Destination Y coordinate.
+     * @param roadEndpoints Cached road endpoint coordinates.
+     * @param roadEndInter Cached road destination lookup.
+     * @param numLanes Number of lanes on the road.
+     * @return Mapping from TurnType to lane IDs.
+     */
     inline std::map<TurnType, LaneList> classifyRoadAtDestination(
-        json const&        destInterJson,
+        json const& destInterJson,
         std::string const& roadId,
-        double             destX,
-        double             destY,
+        double destX,
+        double destY,
         std::unordered_map<std::string, std::array<double,4>> const& roadEndpoints,
-        // road_id -> {startX, startY, endX, endY}
         std::unordered_map<std::string, std::string> const& roadEndInter,
-        // road_id -> endIntersectionId
         int numLanes
     ) {
-        // Virtual destination: all lanes straight.
+        // Virtual intersections have no turning restrictions,
+        // so every lane is considered straight.
         if (destInterJson["virtual"].get<bool>()) {
             std::map<TurnType, LaneList> res;
             LaneList& sl = res[TurnType::Straight];
+
             for (int i = 0; i < numLanes; ++i)
                 sl.push_back(roadId + "_" + std::to_string(i));
+
             std::sort(sl.begin(), sl.end());
             return res;
         }
 
         std::string destId = destInterJson["id"].get<std::string>();
 
-        // Step A mirror: gather unique inbound roads at dest and approach angles.
+        // Collect every unique inbound road together with its approach angle.
         std::vector<std::string> inboundRoads;
-        std::vector<double>      inboundAngles;
+        std::vector<double> inboundAngles;
 
         for (auto const& rl : destInterJson["roadLinks"]) {
             std::string rid = rl["startRoad"].get<std::string>();
+
             bool seen = false;
             for (auto const& r : inboundRoads)
                 if (r == rid) { seen = true; break; }
-            if (seen) continue;
+
+            if (seen)
+                continue;
 
             auto const& ep = roadEndpoints.at(rid);
-            // Determine which endpoint is "far" (not the destination intersection).
+
+            // Determine which endpoint lies away from the intersection.
             double farX, farY;
-            if (roadEndInter.at(rid) == destId)
-            { farX = ep[0]; farY = ep[1]; }   // far end = road start
-            else
-            { farX = ep[2]; farY = ep[3]; }   // far end = road end
+            if (roadEndInter.at(rid) == destId) {
+                farX = ep[0];
+                farY = ep[1];
+            } else {
+                farX = ep[2];
+                farY = ep[3];
+            }
 
             inboundRoads.push_back(rid);
             inboundAngles.push_back(std::atan2(destY - farY, destX - farX));
         }
 
-        // Step B mirror: assign inbound roads to cardinals (result unused here,
-        // but we need roadWonDir to be consistent with parseTurnType usage below).
-        // Actually for outbound classification we only need the roadLinks whose
-        // startRoad == roadId, so we can skip the full cardinal assignment and
-        // directly read TurnType from the JSON.  The cardinal assignment at the
-        // destination is only needed if we wanted to fill MovementMap there, which
-        // we do not.  We keep it simple: just scan roadLinks for our road.
+        // Cardinal assignment is unnecessary here because only the road's
+        // TurnType classification is required.
         (void)inboundRoads;
         (void)inboundAngles;
 
-        // Step D mirror: collect lane ids per TurnType for roadId only.
+        // Group lane IDs according to their turning movement.
         std::map<TurnType, std::unordered_set<std::string>> buckets;
 
         for (auto const& rl : destInterJson["roadLinks"]) {
-            if (rl["startRoad"].get<std::string>() != roadId) continue;
+            if (rl["startRoad"].get<std::string>() != roadId)
+                continue;
 
             TurnType turn = detail::parseTurnType(rl["type"].get<std::string>());
+
             for (auto const& ll : rl["laneLinks"]) {
                 int laneIdx = ll["startLaneIndex"].get<int>();
                 buckets[turn].insert(roadId + "_" + std::to_string(laneIdx));
             }
         }
 
+        // Convert temporary sets into sorted lane lists.
         std::map<TurnType, LaneList> res;
+
         for (auto& [turn, idSet] : buckets) {
             LaneList lanes(idSet.begin(), idSet.end());
             std::sort(lanes.begin(), lanes.end());
             res[turn] = std::move(lanes);
         }
 
-        // Dead-end / no roadLinks for this road: fall back to Straight.
+        // Roads with no explicit road links are treated as straight.
         if (res.empty()) {
             LaneList& sl = res[TurnType::Straight];
+
             for (int i = 0; i < numLanes; ++i)
                 sl.push_back(roadId + "_" + std::to_string(i));
+
             std::sort(sl.begin(), sl.end());
         }
 
         return res;
     }
-}
 
+}
 // ─────────────────────────────────────────────────────────────────────────────
 //  Main loader
 // ─────────────────────────────────────────────────────────────────────────────
